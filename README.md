@@ -1,70 +1,70 @@
-# 🎮 GameBarMixr - Audio & Bluetooth Mixer Widget para Xbox Game Bar
+# 🎮 GameBarMixr - Audio & Bluetooth Mixer Widget for Xbox Game Bar
 
-**GameBarMixr** é um widget nativo desenvolvido para a **Xbox Game Bar (Windows 10/11)** que resolve a frustração de perder o foco dos jogos ao trocar de fone Bluetooth ou ajustar o volume do áudio.
+**GameBarMixr** is a native widget designed for **Xbox Game Bar (Windows 10/11)** that solves the hassle of losing game focus when switching Bluetooth headphones or adjusting audio output volumes during gameplay.
 
-Com o GameBarMixr, você aciona a Game Bar (`Win + G`) sobre a tela de qualquer jogo (em janela ou tela cheia) e altera seus dispositivos de som e fones Bluetooth em 1 clique.
-
----
-
-## ✨ Recursos Principais
-
-- 🎧 **Troca Rápida de Fone Bluetooth**: Conecte e desconecte fones, earbuds (AirPods, Galaxy Buds, Sony, etc.) e soundbars sem abrir a janela de Configurações do Windows.
-- 🎛️ **Mixer de Áudio de Saída**: Troque instantaneamente o dispositivo padrão de reprodução (Alto-falantes / Headset) e controle o volume master e individual por jogo ou aplicativo (Spotify, Discord, etc.).
-- ⚡ **Sem Perda de Foco**: O widget roda como um overlay nativo da Xbox Game Bar, mantendo o jogo ativo.
-- 📌 **Suporte a Pinagem (Pin Widget)**: Mantenha o widget visível em um canto da tela durante a jogatina se desejar.
-- 🏪 **Microsoft Store Ready**: Estrutura de manifesto MSIX e capacidades prontas para publicação na loja de aplicativos do Windows.
+With GameBarMixr, simply press **`Win + G`** over any game (windowed or exclusive fullscreen) to seamlessly control audio endpoints and Bluetooth devices with a single click.
 
 ---
 
-## ⚡ Instalação Rápida no Windows (1 Clique)
+## ✨ Key Features
 
-Para testar e utilizar o widget na sua máquina:
+- 🎧 **Quick Bluetooth Headset Switcher**: Connect and disconnect Bluetooth headphones, earbuds (AirPods, Galaxy Buds, Sony, etc.), and soundbars without opening Windows Settings.
+- 🎛️ **Audio Endpoint & App Mixer**: Instantly switch the default audio playback device (Speakers / Headset) and control master volume or individual app levels (Cyberpunk, Spotify, Discord, etc.).
+- ⚡ **No Loss of Game Focus**: Runs as a lightweight native Xbox Game Bar overlay, keeping your game active and focused.
+- 📌 **Pin Widget Support**: Pin the overlay to any screen corner while gaming.
+- 🏪 **Microsoft Store Ready**: Includes full MSIX packaging structure, manifest capabilities, and asset setup ready for Microsoft Partner Center publication.
 
-1. Baixe ou clone este repositório:
+---
+
+## ⚡ Quick 1-Click Installation on Windows
+
+To install and test the widget on your Windows machine:
+
+1. Clone or download this repository:
    ```bash
-   git clone https://github.com/seu-usuario/GameBarMixr.git
+   git clone https://github.com/your-username/GameBarMixr.git
    cd GameBarMixr
    ```
-2. Abra o **PowerShell** no Windows e execute o script de instalação rápida:
+2. Open **PowerShell** on Windows and run the quick installer script:
    ```powershell
    .\Scripts\install_widget.ps1
    ```
-3. Pressione no teclado: **`Win + G`**
-4. Abra o menu de Widgets (ícone no topo esquerdo) e clique em **Audio & Bluetooth Mixer (GameBarMixr)**!
+3. Press on your keyboard: **`Win + G`**
+4. Open the Widget Menu (top-left bar) and click on **Audio & Bluetooth Mixer (GameBarMixr)**!
 
 ---
 
-## 🏪 Como Gerar o Pacote para Publicar na Microsoft Store
+## 🏪 Building the Package for Microsoft Store
 
-Para publicar o **GameBarMixr** no *Microsoft Partner Center*:
+To publish **GameBarMixr** to the *Microsoft Partner Center*:
 
-1. Execute o script de build MSIX:
+1. Run the MSIX build script:
    ```powershell
    .\Scripts\build_msix.ps1 -Configuration Release -Platform x64
    ```
-2. O script gerará o arquivo `.msixbundle` na pasta `GameBarMixr\bin\MSIX\`.
-3. No [Microsoft Partner Center](https://partner.microsoft.com/dashboard), crie um novo aplicativo, envie o arquivo `.msixbundle` gerado e defina a categoria como **Games > Utilities**.
+2. The script will generate the `.msixbundle` file inside `GameBarMixr\bin\MSIX\`.
+3. Go to [Microsoft Partner Center](https://partner.microsoft.com/dashboard), create a new app submission, upload the `.msixbundle`, and set the category to **Games > Utilities**.
 
 ---
 
-## 🌐 Pré-visualização da Interface Web
+## 🌐 Interactive Web Preview
 
-Para visualizar e testar o layout e a interatividade da interface antes de compilar no Visual Studio:
+To test and preview the widget UI and interactions directly in your browser:
 
-1. Abra o arquivo [`web_preview/index.html`](file:///Users/joaovictorbatista/GameBarMixr/web_preview/index.html) em qualquer navegador (Edge, Chrome, Firefox).
-2. Experimente trocar entre as abas "Mixer de Áudio" e "Fones Bluetooth", ajustar os sliders de volume e conectar fones simulados.
+1. Open [`web_preview/index.html`](file:///Users/joaovictorbatista/GameBarMixr/web_preview/index.html) in any browser (Edge, Chrome, Firefox).
+2. Try switching between the "Audio" and "Bluetooth" tabs, adjusting volume sliders, and toggling mock Bluetooth devices.
 
 ---
 
-## 🛠️ Arquitetura do Projeto
+## 🛠️ Project Architecture
 
-- **Linguagem**: C# / WinUI 3 / UWP (.NET 8)
+- **Language & Framework**: C# / WinUI 3 / UWP (.NET 8)
 - **SDK**: `Microsoft.Gaming.XboxGameBar.SDK` (v1.6.2)
-- **APIs Nativas**: `Windows.Devices.Bluetooth`, `Windows.Devices.Enumeration`, Windows CoreAudio / MMDeviceApi
-- **Manifest**: `Package.appxmanifest` configurado com a extensão `windows.xboxGameBarWidget`
+- **Native APIs**: `Windows.Devices.Bluetooth`, `Windows.Devices.Enumeration`, Windows CoreAudio / MMDeviceApi
+- **Manifest**: `Package.appxmanifest` configured with the `windows.xboxGameBarWidget` extension category.
 
 ---
 
-## 📜 Licença
+## 📜 License
 
-Distribuído sob a licença MIT. Veja `LICENSE` para mais detalhes.
+Distributed under the MIT License. See `LICENSE` for details.
