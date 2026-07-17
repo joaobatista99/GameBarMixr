@@ -1,0 +1,378 @@
+:root {
+  --bg-dark: #121212;
+  --panel-bg: rgba(30, 30, 30, 0.85);
+  --card-bg: rgba(45, 45, 45, 0.7);
+  --card-hover: rgba(60, 60, 60, 0.85);
+  --xbox-green: #107C41;
+  --xbox-green-hover: #13944e;
+  --xbox-green-glow: rgba(16, 124, 65, 0.4);
+  --text-primary: #FFFFFF;
+  --text-secondary: #B0B0B0;
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body {
+  background-color: #080808;
+  font-family: var(--font);
+  color: var(--text-primary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Background Gaming Simulation */
+.gamebar-overlay-bg {
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(circle at 50% 50%, #1a2332 0%, #0a0d14 100%);
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.gamebar-top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: rgba(18, 18, 18, 0.9);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 10;
+}
+
+.gamebar-clock {
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+
+.gamebar-widgets-icons {
+  display: flex;
+  gap: 16px;
+}
+
+.tb-icon {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tb-icon.active, .tb-icon:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.gamebar-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid var(--xbox-green);
+}
+
+/* The GameBarMixr Widget Card */
+.widget-window {
+  width: 380px;
+  height: 520px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 20px var(--xbox-green-glow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.widget-header {
+  height: 48px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.widget-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.xbox-icon {
+  color: var(--xbox-green);
+}
+
+.widget-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.pin-btn, .refresh-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: var(--text-primary);
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.pin-btn:hover, .refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.pin-btn.active {
+  background: var(--xbox-green);
+}
+
+/* Tabs */
+.widget-tabs {
+  display: flex;
+  background: rgba(0, 0, 0, 0.15);
+  padding: 4px;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+  color: var(--text-primary);
+  background: var(--xbox-green);
+  box-shadow: 0 2px 8px var(--xbox-green-glow);
+}
+
+.badge {
+  background: rgba(255, 255, 255, 0.25);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+/* Body */
+.widget-body {
+  flex: 1;
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+/* Cards */
+.device-card, .app-card, .bt-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.device-card:hover, .bt-card:hover {
+  background: var(--card-hover);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.device-card.default {
+  border-color: var(--xbox-green);
+  background: rgba(16, 124, 65, 0.15);
+}
+
+.device-info, .bt-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.device-icon {
+  font-size: 18px;
+}
+
+.device-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.device-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.active-pill {
+  background: var(--xbox-green);
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+/* App Sliders */
+.app-card {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  cursor: default;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+input[type="range"] {
+  flex: 1;
+  accent-color: var(--xbox-green);
+  height: 4px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.vol-percent {
+  font-size: 11px;
+  color: var(--xbox-green);
+  font-weight: 700;
+  width: 32px;
+  text-align: right;
+}
+
+/* Bluetooth specific */
+.bt-status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.bt-status.connected {
+  color: #4ECA84;
+}
+
+.bt-action-btn {
+  background: var(--xbox-green);
+  border: none;
+  color: white;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bt-action-btn:hover {
+  background: var(--xbox-green-hover);
+}
+
+.bt-action-btn.disconnect {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ff6b6b;
+}
+
+.bt-action-btn.disconnect:hover {
+  background: rgba(255, 107, 107, 0.2);
+}
+
+.bt-quick-tip {
+  margin-top: 14px;
+  padding: 10px;
+  background: rgba(16, 124, 65, 0.1);
+  border: 1px solid rgba(16, 124, 65, 0.3);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}

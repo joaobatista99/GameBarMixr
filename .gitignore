@@ -1,0 +1,28 @@
+# Build and release folders
+bin/
+obj/
+[B|b]uild/
+[R|r]elease/
+*.msix
+*.msixbundle
+*.appx
+*.appxbundle
+*.appxupload
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+*.user
+*.userosv
+*.suo
+*.userprefs
+*.sln.docstates
+
+# Packages
+packages/
+*.nuget.props
+*.nuget.targets
+
+# OS generated files
+.DS_Store
+Thumbs.db
