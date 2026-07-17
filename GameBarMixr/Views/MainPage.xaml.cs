@@ -1,7 +1,7 @@
-using System.Threading.Tasks;
 using Microsoft.Gaming.XboxGameBar;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using GameBarMixr.Models;
 using GameBarMixr.Services;
 
@@ -19,6 +19,30 @@ namespace GameBarMixr.Views
             _widget = widget;
         }
 
+        private void OnTabAudioClicked(object sender, RoutedEventArgs e)
+        {
+            AudioSection.Visibility = Visibility.Visible;
+            BluetoothSection.Visibility = Visibility.Collapsed;
+
+            TabAudioBtn.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 16, 124, 65));
+            TabAudioBtn.Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 255, 255));
+
+            TabBtBtn.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            TabBtBtn.Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 140, 140, 140));
+        }
+
+        private void OnTabBtClicked(object sender, RoutedEventArgs e)
+        {
+            AudioSection.Visibility = Visibility.Collapsed;
+            BluetoothSection.Visibility = Visibility.Visible;
+
+            TabBtBtn.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 16, 124, 65));
+            TabBtBtn.Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 255, 255));
+
+            TabAudioBtn.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            TabAudioBtn.Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 140, 140, 140));
+        }
+
         private async void OnAudioDeviceSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (AudioDevicesListView.SelectedItem is AudioDeviceModel selectedDevice)
@@ -34,7 +58,6 @@ namespace GameBarMixr.Views
                 bool success = await BluetoothService.ToggleConnectionAsync(device);
                 if (success && device.IsConnected)
                 {
-                    // Automatic sync: when Bluetooth device connects, set as default audio output
                     AudioService.RefreshAudioDevices();
                 }
             }

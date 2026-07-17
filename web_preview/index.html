@@ -3,81 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GameBarMixr - Xbox Game Bar Widget Preview</title>
+  <title>GameBarMixr - Minimalist Xbox Game Bar Widget</title>
   <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Xbox Game Bar Overlay Simulator Container -->
+  <!-- Xbox Game Bar Overlay Simulator -->
   <div class="gamebar-overlay-bg">
-    <!-- Game Bar Top Toolbar Simulator -->
-    <div class="gamebar-top-bar">
-      <div class="gamebar-clock">10:45 AM</div>
-      <div class="gamebar-widgets-icons">
-        <span class="tb-icon active">🎛️ Audio Mixer</span>
-        <span class="tb-icon">🎮 Xbox Performance</span>
-        <span class="tb-icon">💬 Party Chat</span>
-      </div>
-      <div class="gamebar-user">
-        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=GamerTag" alt="Avatar" class="avatar">
-        <span>GamerTag</span>
-      </div>
-    </div>
-
-    <!-- The GameBarMixr Widget Window -->
+    
+    <!-- Minimal GameBarMixr Widget Container -->
     <div class="widget-window">
-      <!-- Widget Header -->
-      <div class="widget-header">
-        <div class="widget-title">
-          <svg class="xbox-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-          </svg>
-          <span>GameBarMixr</span>
+      
+      <!-- Top Bar: Segmented Switcher & Refresh -->
+      <div class="widget-topbar">
+        <div class="segmented-pill">
+          <button class="pill-btn active" data-tab="audio">Áudio</button>
+          <button class="pill-btn" data-tab="bluetooth">Bluetooth <span class="dot-indicator" id="btDot"></span></button>
         </div>
-        <div class="widget-actions">
-          <button class="pin-btn" id="pinBtn" title="Fixar Widget na Tela (Pin)">📌</button>
-          <button class="refresh-btn" id="refreshBtn" title="Atualizar Dispositivos">🔄</button>
+        
+        <div class="topbar-right">
+          <button class="icon-btn" id="pinBtn" title="Fixar na tela">📌</button>
+          <button class="icon-btn" id="refreshBtn" title="Atualizar">🔄</button>
         </div>
       </div>
 
-      <!-- Navigation Tabs -->
-      <div class="widget-tabs">
-        <button class="tab-btn active" data-tab="audio">Mixer de Áudio</button>
-        <button class="tab-btn" data-tab="bluetooth">Fones Bluetooth <span class="badge" id="btConnectedBadge">1</span></button>
-      </div>
-
-      <!-- Tab Content Area -->
+      <!-- Main Widget Body -->
       <div class="widget-body">
-        <!-- TAB 1: AUDIO MIXER -->
+        
+        <!-- PANE 1: AUDIO MIXER -->
         <div class="tab-pane active" id="tab-audio">
-          <div class="section-label">SAÍDA DE ÁUDIO PADRÃO</div>
-          
-          <div class="device-list" id="audioDevicesList">
-            <!-- Populated via JS -->
+          <div class="section-tag">SAÍDA</div>
+          <div class="audio-list" id="audioDevicesList">
+            <!-- Rendered by JS -->
           </div>
 
-          <div class="section-label" style="margin-top: 18px;">VOLUME POR APLICATIVO</div>
-          
-          <div class="app-mixer-list" id="appMixerList">
-            <!-- Populated via JS -->
+          <div class="section-tag" style="margin-top: 14px;">APLICATIVOS</div>
+          <div class="app-list" id="appMixerList">
+            <!-- Rendered by JS -->
           </div>
         </div>
 
-        <!-- TAB 2: BLUETOOTH MANAGER -->
+        <!-- PANE 2: BLUETOOTH MANAGER -->
         <div class="tab-pane" id="tab-bluetooth">
-          <div class="section-label">FONES & DISPOSITIVOS EMPARELHADOS</div>
-          
-          <div class="bt-device-list" id="btDevicesList">
-            <!-- Populated via JS -->
-          </div>
-
-          <div class="bt-quick-tip">
-            <span>💡 Conecte seu fone Bluetooth sem minimizar o jogo! A saída de som mudará automaticamente ao conectar.</span>
+          <div class="section-tag">DISPOSITIVOS EMPARELHADOS</div>
+          <div class="bt-list" id="btDevicesList">
+            <!-- Rendered by JS -->
           </div>
         </div>
+
       </div>
+
     </div>
   </div>
 
