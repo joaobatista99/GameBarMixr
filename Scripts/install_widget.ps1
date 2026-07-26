@@ -1,27 +1,54 @@
 # GameBarMixr - Instalador 1-Clique para Xbox Game Bar
-# Executar no PowerShell do Windows como Administrador, com Modo Desenvolvedor habilitado.
+# Executa no PowerShell do Windows como Administrador, com Modo Desenvolvedor habilitado.
 #
-# Requisito: .NET 8 SDK instalado (https://dot.net)
-# Verifique com: dotnet --version
+# Requisito: Visual Studio Build Tools 2022 instalado com workload:
+#   - ".NET desktop build tools"
+#   - "Windows App SDK C# Templates"
 
 param(
-    [string]$Platform = "x64"  # ou x86 / ARM64
+    [string]$Platform = "x64",
+    [string]$Configuration = "Release"
 )
 
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host "  GameBarMixr - Instalador do Widget do Xbox Game Bar" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 
-$scriptDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
-$projectDir  = Join-Path $scriptDir "..\GameBarMixr"
-$csprojPath  = Join-Path $projectDir "GameBarMixr.csproj"
+$scriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectDir = Join-Path $scriptDir "..\GameBarMixr"
+$csprojPath = Join-Path $projectDir "GameBarMixr.csproj"
 
-# ── PASSO 0: Verifica .NET SDK ───────────────────────────────────────────────
-if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
-    Write-Host ""
-    Write-Host "[ERRO] .NET SDK não encontrado." -ForegroundColor Red
-    Write-Host "Instale em: https://dotnet.microsoft.com/download" -ForegroundColor Yellow
-    exit 1
+# ── Função para localizar MSBuild.exe do Visual Studio ──────────────────────
+function Find-MSBuild {
+    $candidates = @(
+        # VS Build Tools 2022
+        "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe",
+        # VS Community/Professional/Enterprise 2022
+        "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe",
+        "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe",
+        "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe",
+        # VS 2019 fallback
+        "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\MSBuild\Current\Bin\MSBuild.exe",
+        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe"
+    )
+
+    foreach ($path in $candidates) {
+        if (Test-Path $path) {
+            return $path
+        }
+    }
+
+    # Try vswhere.exe for dynamic detection
+    $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswhere) {
+        $installPath = & "$vswhere" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath 2>$null
+        if ($installPath) {
+            $msbuild = Join-Path $installPath "MSBuild\Current\Bin\MSBuild.exe"
+            if (Test-Path $msbuild) { return $msbuild }
+        }
+    }
+
+    return $null
 }
 
 # ── PASSO 1: Gerar Assets ───────────────────────────────────────────────────
@@ -31,56 +58,77 @@ $generateAssetsScript = Join-Path $scriptDir "generate_assets.ps1"
 if (Test-Path $generateAssetsScript) {
     & "$generateAssetsScript"
 } else {
-    Write-Host "       [AVISO] generate_assets.ps1 não encontrado, pulando." -ForegroundColor DarkYellow
+    Write-Host "       [AVISO] generate_assets.ps1 nao encontrado, pulando." -ForegroundColor DarkYellow
 }
 
-# ── PASSO 2: Compilar o projeto C# ─────────────────────────────────────────
+# ── PASSO 2: Localizar MSBuild ──────────────────────────────────────────────
 Write-Host ""
-Write-Host "[2/4] Compilando GameBarMixr.csproj (Release / $Platform)..." -ForegroundColor Yellow
+Write-Host "[2/4] Localizando Visual Studio MSBuild..." -ForegroundColor Yellow
 
-if (-not (Test-Path $csprojPath)) {
-    Write-Host "[ERRO] GameBarMixr.csproj não encontrado em $csprojPath" -ForegroundColor Red
+$msbuild = Find-MSBuild
+
+if (-not $msbuild) {
+    Write-Host ""
+    Write-Host "[ERRO] MSBuild.exe nao encontrado." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Instale o Visual Studio Build Tools 2022:" -ForegroundColor Yellow
+    Write-Host "  https://visualstudio.microsoft.com/downloads/#build-tools" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Durante a instalacao, selecione:" -ForegroundColor Yellow
+    Write-Host "  [x] .NET desktop build tools" -ForegroundColor White
+    Write-Host "  [x] Windows App SDK C# Templates (painel direito, Optional)" -ForegroundColor White
     exit 1
 }
 
-dotnet publish "$csprojPath" `
-    --configuration Release `
-    --output "$projectDir\bin\publish\$Platform"
+Write-Host "       Encontrado: $msbuild" -ForegroundColor Gray
+
+# ── PASSO 3: Compilar com MSBuild do VS ─────────────────────────────────────
+Write-Host ""
+Write-Host "[3/4] Compilando GameBarMixr com MSBuild ($Configuration / $Platform)..." -ForegroundColor Yellow
+
+$outputDir = "$projectDir\bin\$Configuration\net8.0-windows10.0.19041.0\publish"
+
+& "$msbuild" "$csprojPath" `
+    /t:Restore,Build,Publish `
+    /p:Configuration=$Configuration `
+    /p:Platform=$Platform `
+    /p:PublishDir="$outputDir" `
+    /p:WindowsPackageType=None `
+    /m `
+    /nologo `
+    /verbosity:minimal
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
-    Write-Host "[ERRO] Falha na compilação. Verifique os erros acima." -ForegroundColor Red
-    Write-Host "Dica: Abra a solução no Visual Studio para diagnosticar." -ForegroundColor Yellow
+    Write-Host "[ERRO] Falha na compilacao. Verifique os erros acima." -ForegroundColor Red
+    Write-Host "Dica: Abra a solucao no Visual Studio para diagnosticar." -ForegroundColor Yellow
     exit 1
 }
 
-# ── PASSO 3: Copiar AppxManifest.xml e Assets para o output ────────────────
-Write-Host ""
-Write-Host "[3/4] Preparando pacote para registro..." -ForegroundColor Yellow
+Write-Host "       Build concluido com sucesso!" -ForegroundColor Green
 
-$publishDir  = "$projectDir\bin\publish\$Platform"
+# ── PASSO 4: Preparar e Registrar o Pacote ──────────────────────────────────
+Write-Host ""
+Write-Host "[4/4] Registrando widget no Xbox Game Bar..." -ForegroundColor Yellow
+
 $manifestSrc = Join-Path $projectDir "AppxManifest.xml"
-$manifestDst = Join-Path $publishDir "AppxManifest.xml"
+$manifestDst = Join-Path $outputDir "AppxManifest.xml"
 $assetsSrc   = Join-Path $projectDir "Assets"
-$assetsDst   = Join-Path $publishDir "Assets"
+$assetsDst   = Join-Path $outputDir "Assets"
 
 Copy-Item -Path $manifestSrc -Destination $manifestDst -Force
-
 if (Test-Path $assetsSrc) {
     Copy-Item -Path $assetsSrc -Destination $assetsDst -Recurse -Force
 }
 
-# ── PASSO 4: Registrar no Xbox Game Bar ────────────────────────────────────
-Write-Host ""
-Write-Host "[4/4] Registrando widget no Xbox Game Bar..." -ForegroundColor Yellow
 Add-AppxPackage -Register "$manifestDst" -ForceApplicationShutdown
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor Green
-    Write-Host "  Instalação concluída com SUCESSO!" -ForegroundColor Green
-    Write-Host "  Pressione Win+G para abrir a Xbox Game Bar."              -ForegroundColor Cyan
-    Write-Host "  Clique em Widgets e selecione 'Audio & Bluetooth Mixer'." -ForegroundColor Cyan
+    Write-Host "  Instalacao concluida com SUCESSO!" -ForegroundColor Green
+    Write-Host "  Pressione Win+G para abrir a Xbox Game Bar." -ForegroundColor Cyan
+    Write-Host "  Va em Widgets e selecione 'Audio & Bluetooth Mixer'." -ForegroundColor Cyan
     Write-Host "============================================================" -ForegroundColor Green
 } else {
     Write-Host ""
