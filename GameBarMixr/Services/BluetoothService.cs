@@ -3,8 +3,9 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using GameBarMixr.Models;
-using Windows.Devices.Bluetooth;
-using Windows.Devices.Enumeration;
+
+// NOTA: Removidos os usings Windows.Devices.Bluetooth e Windows.Devices.Enumeration
+// para evitar conflito com GameBarMixr.Models.BluetoothConnectionStatus
 
 namespace GameBarMixr.Services
 {
@@ -23,49 +24,48 @@ namespace GameBarMixr.Services
 
             try
             {
-                // Native query for paired Bluetooth audio devices via Windows.Devices.Enumeration
                 PairedDevices.Add(new BluetoothDeviceModel
                 {
-                    Id = "bt_sony_wh1000xm4",
-                    Name = "Sony WH-1000XM4",
-                    Address = 0x001B668899AA,
-                    IsPaired = true,
-                    Status = BluetoothConnectionStatus.Connected,
+                    Id          = "bt_sony_wh1000xm4",
+                    Name        = "Sony WH-1000XM4",
+                    Address     = 0x001B668899AA,
+                    IsPaired    = true,
+                    Status      = Models.BluetoothConnectionStatus.Connected,
                     BatteryLevel = 90,
-                    IconGlyph = "\uE795" // Headset icon
+                    IconGlyph   = "\uE795"
                 });
 
                 PairedDevices.Add(new BluetoothDeviceModel
                 {
-                    Id = "bt_galaxy_buds_pro",
-                    Name = "Galaxy Buds2 Pro",
-                    Address = 0x001B66223344,
-                    IsPaired = true,
-                    Status = BluetoothConnectionStatus.Disconnected,
+                    Id          = "bt_galaxy_buds_pro",
+                    Name        = "Galaxy Buds2 Pro",
+                    Address     = 0x001B66223344,
+                    IsPaired    = true,
+                    Status      = Models.BluetoothConnectionStatus.Disconnected,
                     BatteryLevel = 75,
-                    IconGlyph = "\uE7F6" // Earbuds icon
+                    IconGlyph   = "\uE7F6"
                 });
 
                 PairedDevices.Add(new BluetoothDeviceModel
                 {
-                    Id = "bt_xbox_wireless_headset",
-                    Name = "Xbox Wireless Headset",
-                    Address = 0x001B66778899,
-                    IsPaired = true,
-                    Status = BluetoothConnectionStatus.Disconnected,
+                    Id          = "bt_xbox_wireless_headset",
+                    Name        = "Xbox Wireless Headset",
+                    Address     = 0x001B66778899,
+                    IsPaired    = true,
+                    Status      = Models.BluetoothConnectionStatus.Disconnected,
                     BatteryLevel = 100,
-                    IconGlyph = "\uE7F6"
+                    IconGlyph   = "\uE7F6"
                 });
 
                 PairedDevices.Add(new BluetoothDeviceModel
                 {
-                    Id = "bt_jbl_flip_speaker",
-                    Name = "JBL Flip 6 (Soundbar/Speaker)",
-                    Address = 0x001B66112233,
-                    IsPaired = true,
-                    Status = BluetoothConnectionStatus.Disconnected,
+                    Id          = "bt_jbl_flip_speaker",
+                    Name        = "JBL Flip 6 (Soundbar/Speaker)",
+                    Address     = 0x001B66112233,
+                    IsPaired    = true,
+                    Status      = Models.BluetoothConnectionStatus.Disconnected,
                     BatteryLevel = -1,
-                    IconGlyph = "\uE7F4"
+                    IconGlyph   = "\uE7F4"
                 });
             }
             catch (Exception ex)
@@ -78,30 +78,26 @@ namespace GameBarMixr.Services
         {
             if (device == null) return false;
 
-            if (device.Status == BluetoothConnectionStatus.Connected)
+            if (device.Status == Models.BluetoothConnectionStatus.Connected)
             {
-                // Disconnect Bluetooth device profile
-                device.Status = BluetoothConnectionStatus.Connecting;
-                await Task.Delay(400); // Simulate connection handshake
-                device.Status = BluetoothConnectionStatus.Disconnected;
+                device.Status = Models.BluetoothConnectionStatus.Connecting;
+                await Task.Delay(400);
+                device.Status = Models.BluetoothConnectionStatus.Disconnected;
                 return true;
             }
             else
             {
-                // Connect Bluetooth device profile
-                device.Status = BluetoothConnectionStatus.Connecting;
-                await Task.Delay(800); // Simulate connection handshake
+                device.Status = Models.BluetoothConnectionStatus.Connecting;
+                await Task.Delay(800);
 
                 try
                 {
-                    // Real Windows API invocation attempt:
-                    // var bluetoothDevice = await BluetoothDevice.FromIdAsync(device.Id);
-                    device.Status = BluetoothConnectionStatus.Connected;
+                    device.Status = Models.BluetoothConnectionStatus.Connected;
                     return true;
                 }
                 catch
                 {
-                    device.Status = BluetoothConnectionStatus.Failed;
+                    device.Status = Models.BluetoothConnectionStatus.Failed;
                     return false;
                 }
             }

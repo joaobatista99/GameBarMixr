@@ -1,13 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using GameBarMixr.Services;
 using GameBarMixr.Models;
-using NAudio.CoreAudioApi;
 
 namespace GameBarMixr.Views
 {
@@ -265,12 +262,15 @@ namespace GameBarMixr.Views
             lbl.TextAlign = ContentAlignment.MiddleLeft;
 
             card.Controls.AddRange(new Control[] { dot, lbl });
-            card.Click += async (s, e) =>
+
+            // Handler extraído para poder ser reutilizado no label
+            async void OnCardClick(object? s, EventArgs e)
             {
                 await _audioService.SetDefaultAudioDeviceAsync(dev.Id);
                 RenderAudio();
-            };
-            lbl.Click += card.Click.GetInvocationList().First() as EventHandler;
+            }
+            card.Click += OnCardClick;
+            lbl.Click  += OnCardClick;
             return card;
         }
 
@@ -497,12 +497,11 @@ namespace GameBarMixr.Views
         }
 
         // ── Refresh ──────────────────────────────────────────────────────────
-        private void OnRefresh(object? s = null, EventArgs? e = null)
+        private void OnRefresh()
         {
             _audioService.RefreshAudioDevices();
             RenderAudio();
             RenderBluetooth();
         }
-        private void OnRefresh() { OnRefresh(null, null); }
     }
 }

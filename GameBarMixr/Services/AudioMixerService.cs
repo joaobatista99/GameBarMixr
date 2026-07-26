@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using GameBarMixr.Models;
@@ -10,8 +11,10 @@ namespace GameBarMixr.Services
     public class AudioMixerService : IDisposable
     {
         private readonly MMDeviceEnumerator _enumerator;
+        // Guarda referências vivas das sessões para controle de volume real
+        private readonly Dictionary<string, AudioSessionControl> _liveSessions = new();
 
-        public ObservableCollection<AudioDeviceModel> Devices { get; } = new();
+        public ObservableCollection<AudioDeviceModel>   Devices     { get; } = new();
         public ObservableCollection<AppAudioSessionModel> AppSessions { get; } = new();
 
         public AudioMixerService()
@@ -24,46 +27,44 @@ namespace GameBarMixr.Services
         {
             Devices.Clear();
             AppSessions.Clear();
+            _liveSessions.Clear();
 
             try
             {
-                // Enumerate all active audio playback endpoints
                 var defaultDevice = _enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-                var allDevices = _enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
+                var allDevices    = _enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
 
                 foreach (var device in allDevices)
                 {
-                    var isDefault = device.ID == defaultDevice.ID;
-                    var volume = device.AudioEndpointVolume.MasterVolumeLevelScalar;
-
                     Devices.Add(new AudioDeviceModel
                     {
-                        Id = device.ID,
-                        Name = device.FriendlyName,
-                        IsDefault = isDefault,
-                        Volume = volume,
+                        Id       = device.ID,
+                        Name     = device.FriendlyName,
+                        IsDefault = device.ID == defaultDevice.ID,
+                        Volume   = device.AudioEndpointVolume.MasterVolumeLevelScalar,
                         IconGlyph = device.FriendlyName.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase)
-                                    || device.FriendlyName.Contains("Wireless", StringComparison.OrdinalIgnoreCase)
-                            ? "\uE7F6"   // headset glyph
-                            : "\uE7F4"  // speaker glyph
+                                 || device.FriendlyName.Contains("Wireless", StringComparison.OrdinalIgnoreCase)
+                            ? "\uE7F6" : "\uE7F4"
                     });
                 }
 
-                // Enumerate per-app audio sessions from default device
-                var sessionManager = defaultDevice.AudioSessionManager;
-                var sessions = sessionManager.Sessions;
-
+                // Sessões de áudio por aplicativo
+                var sessions = defaultDevice.AudioSessionManager.Sessions;
                 for (int i = 0; i < sessions.Count; i++)
                 {
                     var session = sessions[i];
-                    var process = GetProcessName(session.GetProcessID);
-                    if (string.IsNullOrWhiteSpace(process)) continue;
+                    var pid     = session.GetProcessID;
+                    var name    = GetProcessName(pid);
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+
+                    var sessionId = session.GetSessionIdentifier;
+                    _liveSessions[sessionId] = session;
 
                     AppSessions.Add(new AppAudioSessionModel
                     {
-                        Id = session.GetSessionIdentifier,
-                        AppName = process,
-                        Volume = session.SimpleAudioVolume.Volume,
+                        Id      = sessionId,
+                        AppName = name,
+                        Volume  = session.SimpleAudioVolume.Volume,
                         IsMuted = session.SimpleAudioVolume.Mute,
                         IconGlyph = "\uE735"
                     });
@@ -71,27 +72,21 @@ namespace GameBarMixr.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[AudioMixerService] Refresh error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[AudioMixerService] Refresh: {ex.Message}");
             }
         }
 
         private static string GetProcessName(uint pid)
         {
-            try
-            {
-                var proc = System.Diagnostics.Process.GetProcessById((int)pid);
-                return proc.ProcessName;
-            }
+            try   { return System.Diagnostics.Process.GetProcessById((int)pid).ProcessName; }
             catch { return string.Empty; }
         }
 
         public async Task<bool> SetDefaultAudioDeviceAsync(string deviceId)
         {
-            // Windows does not expose a public API to change default audio device.
-            // This requires PolicyConfig COM interop (undocumented).
-            // For now we simulate the change in UI; full implementation would use
-            // the AudioSwitcher library or direct PolicyConfigClient COM call.
-            await Task.Delay(100);
+            // A API pública do Windows não expõe mudança de dispositivo padrão.
+            // Atualiza apenas o modelo de UI; implementação completa requer PolicyConfigClient COM.
+            await Task.Delay(80);
             foreach (var dev in Devices)
                 dev.IsDefault = dev.Id == deviceId;
             return true;
@@ -108,7 +103,26 @@ namespace GameBarMixr.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[AudioMixerService] SetVolume error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[AudioMixerService] SetDeviceVolume: {ex.Message}");
+            }
+        }
+
+        // Corrige CS1061: método ausente que o WidgetForm chama
+        public void SetAppVolume(string sessionId, float volume)
+        {
+            try
+            {
+                volume = Math.Clamp(volume, 0f, 1f);
+                // Atualiza modelo de UI
+                var model = AppSessions.FirstOrDefault(a => a.Id == sessionId);
+                if (model != null) model.Volume = volume;
+                // Atualiza volume real via NAudio se a sessão ainda estiver viva
+                if (_liveSessions.TryGetValue(sessionId, out var session))
+                    session.SimpleAudioVolume.Volume = volume;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AudioMixerService] SetAppVolume: {ex.Message}");
             }
         }
 
