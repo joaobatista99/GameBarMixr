@@ -7,15 +7,24 @@ Write-Host "============================================================" -Foreg
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectDir = Join-Path $scriptDir "..\GameBarMixr"
-$manifestPath = Join-Path $projectDir "Package.appxmanifest"
+$appxManifestPath = Join-Path $projectDir "AppxManifest.xml"
+$packageManifestPath = Join-Path $projectDir "Package.appxmanifest"
 
-if (-not (Test-Path $manifestPath)) {
-    Write-Host "[ERRO] Arquivo Package.appxmanifest não encontrado em $manifestPath" -ForegroundColor Red
-    exit 1
+# O Windows Add-AppxPackage exige estritamente o arquivo nomeado como AppxManifest.xml
+if (-not (Test-Path $appxManifestPath)) {
+    if (Test-Path $packageManifestPath) {
+        Write-Host "[INFO] Gerando AppxManifest.xml a partir de Package.appxmanifest..." -ForegroundColor Yellow
+        $content = Get-Content $packageManifestPath -Raw
+        $content = $content -replace '\$targetnametoken\$\.exe', 'GameBarMixr.exe'
+        Set-Content -Path $appxManifestPath -Value $content
+    } else {
+        Write-Host "[ERRO] Arquivo AppxManifest.xml não encontrado em $appxManifestPath" -ForegroundColor Red
+        exit 1
+    }
 }
 
-Write-Host "[1/3] Habilitando registro de desenvolvedor para pacotes AppX..." -ForegroundColor Yellow
-Add-AppxPackage -Register "$manifestPath" -ForceApplicationShutdown
+Write-Host "[1/3] Habilitando registro de desenvolvedor e instalando pacote AppX..." -ForegroundColor Yellow
+Add-AppxPackage -Register "$appxManifestPath" -ForceApplicationShutdown
 
 Write-Host "[2/3] Verificando integração com o Xbox Game Bar..." -ForegroundColor Yellow
 Start-Sleep -Seconds 2
