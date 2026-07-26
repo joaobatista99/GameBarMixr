@@ -5,7 +5,8 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap3 mp rescap">
+  IgnorableNamespaces="uap uap3 mp rescap"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10">
 
   <Identity
     Name="GameBarMixr.AudioBluetoothWidget"
@@ -45,16 +46,23 @@
       </uap:VisualElements>
 
       <Extensions>
-        <!-- Xbox Game Bar Widget Registration -->
-        <uap3:Extension Category="windows.xboxGameBarWidget">
-          <uap3:XboxGameBarWidget
+        <!-- Xbox Game Bar Widget Registration (correct schema) -->
+        <uap3:Extension Category="windows.appExtension">
+          <uap3:AppExtension
+            Name="microsoft.gameBarUIExtension"
             Id="GameBarMixr"
-            Title="Audio &amp; Bluetooth Mixer"
-            AppId="App"
-            SettingsSupported="false"
-            PinningSupported="true"
-            Height="440"
-            Width="330" />
+            DisplayName="Audio &amp; Bluetooth Mixer"
+            Description="Fast audio and Bluetooth mixer for Xbox Game Bar"
+            PublicFolder="Public">
+            <uap3:Properties>
+              <GameBarWidget
+                Type="Standard"
+                PinningSupported="true"
+                Height="440"
+                Width="330"
+                AlwaysPin="false" />
+            </uap3:Properties>
+          </uap3:AppExtension>
         </uap3:Extension>
       </Extensions>
     </Application>
