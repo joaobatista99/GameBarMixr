@@ -8,17 +8,17 @@
     <Nullable>enable</Nullable>
     <UseWinUI>true</UseWinUI>
     <WindowsPackageType>None</WindowsPackageType>
-    <SelfContained>true</SelfContained>
-    <WindowsAppSdkSelfContained>true</WindowsAppSdkSelfContained>
-    <Platforms>x86;x64;ARM64</Platforms>
+    <!-- Framework-dependent: avoids win10-* RID resolution errors no .NET 10 SDK -->
+    <SelfContained>false</SelfContained>
+    <Platforms>x64;x86;ARM64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Xbox Game Bar SDK (versão disponível no NuGet) -->
     <PackageReference Include="Microsoft.Gaming.XboxGameBar" Version="5.1.200401003" />
-    <!-- WinUI 3 / Windows App SDK -->
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240311000" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.3233" PrivateAssets="All" />
+    <!-- WinUI 3 / Windows App SDK 1.6.x (compatível com .NET 10 SDK) -->
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250108002" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" PrivateAssets="All" />
     <!-- CoreAudio para controle de volume por app (pacote correto: NAudio, não NAudio.CoreAudioApi) -->
     <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>

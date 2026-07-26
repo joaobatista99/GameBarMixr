@@ -45,10 +45,7 @@ if (-not (Test-Path $csprojPath)) {
 
 dotnet publish "$csprojPath" `
     --configuration Release `
-    --runtime win-$Platform `
-    --self-contained true `
-    --output "$projectDir\bin\publish\$Platform" `
-    /p:WindowsAppSdkSelfContained=true
+    --output "$projectDir\bin\publish\$Platform"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
