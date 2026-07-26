@@ -23,13 +23,21 @@ if (-not (Test-Path $appxManifestPath)) {
     }
 }
 
-Write-Host "[1/3] Habilitando registro de desenvolvedor e instalando pacote AppX..." -ForegroundColor Yellow
+Write-Host "[1/3] Gerando assets de imagem necessários para o pacote..." -ForegroundColor Yellow
+$generateAssetsScript = Join-Path $scriptDir "generate_assets.ps1"
+if (Test-Path $generateAssetsScript) {
+    & "$generateAssetsScript"
+} else {
+    Write-Host "[AVISO] Script generate_assets.ps1 não encontrado, pulando geração de assets." -ForegroundColor Yellow
+}
+
+Write-Host "[2/3] Registrando pacote AppX no Xbox Game Bar..." -ForegroundColor Yellow
 Add-AppxPackage -Register "$appxManifestPath" -ForceApplicationShutdown
 
-Write-Host "[2/3] Verificando integração com o Xbox Game Bar..." -ForegroundColor Yellow
+Write-Host "[3/3] Verificando integração com o Xbox Game Bar..." -ForegroundColor Yellow
 Start-Sleep -Seconds 2
 
-Write-Host "[3/3] Instalação concluída com SUCESSO!" -ForegroundColor Green
+Write-Host "Instalação concluída com SUCESSO!" -ForegroundColor Green
 Write-Host ""
 Write-Host "Pressione 'Win + G' no seu teclado para abrir a Xbox Game Bar." -ForegroundColor Cyan
 Write-Host "O widget 'Audio & Bluetooth Mixer' estará visível no menu de Widgets!" -ForegroundColor Cyan
