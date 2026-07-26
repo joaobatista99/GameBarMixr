@@ -1,21 +1,22 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using GameBarMixr.Models;
+using NAudio.CoreAudioApi;
 
 namespace GameBarMixr.Services
 {
-    public class AudioMixerService
+    public class AudioMixerService : IDisposable
     {
+        private readonly MMDeviceEnumerator _enumerator;
+
         public ObservableCollection<AudioDeviceModel> Devices { get; } = new();
         public ObservableCollection<AppAudioSessionModel> AppSessions { get; } = new();
 
         public AudioMixerService()
         {
-            // Initial load of audio output endpoints
+            _enumerator = new MMDeviceEnumerator();
             RefreshAudioDevices();
         }
 
@@ -26,92 +27,94 @@ namespace GameBarMixr.Services
 
             try
             {
-                // CoreAudio / MMDevice API Interop / WinRT audio enumeration
-                // Adding connected audio output devices
-                Devices.Add(new AudioDeviceModel
-                {
-                    Id = "device_speakers_realtek",
-                    Name = "Alto-falantes (Realtek High Definition Audio)",
-                    IsDefault = true,
-                    Volume = 0.80f,
-                    IconGlyph = "\uE7F6"
-                });
+                // Enumerate all active audio playback endpoints
+                var defaultDevice = _enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                var allDevices = _enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
 
-                Devices.Add(new AudioDeviceModel
+                foreach (var device in allDevices)
                 {
-                    Id = "device_bt_headset_wh1000xm4",
-                    Name = "Sony WH-1000XM4 (Bluetooth Stereo)",
-                    IsDefault = false,
-                    Volume = 0.65f,
-                    IconGlyph = "\uE795"
-                });
+                    var isDefault = device.ID == defaultDevice.ID;
+                    var volume = device.AudioEndpointVolume.MasterVolumeLevelScalar;
 
-                Devices.Add(new AudioDeviceModel
-                {
-                    Id = "device_hdmi_tv",
-                    Name = "NVIDIA HDMI Output (LG OLED TV)",
-                    IsDefault = false,
-                    Volume = 0.50f,
-                    IconGlyph = "\uE7F4"
-                });
+                    Devices.Add(new AudioDeviceModel
+                    {
+                        Id = device.ID,
+                        Name = device.FriendlyName,
+                        IsDefault = isDefault,
+                        Volume = volume,
+                        IconGlyph = device.FriendlyName.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase)
+                                    || device.FriendlyName.Contains("Wireless", StringComparison.OrdinalIgnoreCase)
+                            ? "\uE7F6"   // headset glyph
+                            : "\uE7F4"  // speaker glyph
+                    });
+                }
 
-                // App session audio levels
-                AppSessions.Add(new AppAudioSessionModel
-                {
-                    Id = "app_game_cyberpunk",
-                    AppName = "Cyberpunk 2077",
-                    Volume = 0.90f,
-                    IconGlyph = "\uE7FC"
-                });
+                // Enumerate per-app audio sessions from default device
+                var sessionManager = defaultDevice.AudioSessionManager;
+                var sessions = sessionManager.Sessions;
 
-                AppSessions.Add(new AppAudioSessionModel
+                for (int i = 0; i < sessions.Count; i++)
                 {
-                    Id = "app_spotify",
-                    AppName = "Spotify Music",
-                    Volume = 0.40f,
-                    IconGlyph = "\uE8D6"
-                });
+                    var session = sessions[i];
+                    var process = GetProcessName(session.GetProcessID);
+                    if (string.IsNullOrWhiteSpace(process)) continue;
 
-                AppSessions.Add(new AppAudioSessionModel
-                {
-                    Id = "app_discord",
-                    AppName = "Discord Voice & Chat",
-                    Volume = 0.85f,
-                    IconGlyph = "\uE717"
-                });
+                    AppSessions.Add(new AppAudioSessionModel
+                    {
+                        Id = session.GetSessionIdentifier,
+                        AppName = process,
+                        Volume = session.SimpleAudioVolume.Volume,
+                        IsMuted = session.SimpleAudioVolume.Mute,
+                        IconGlyph = "\uE735"
+                    });
+                }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"AudioMixerService Refresh Exception: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[AudioMixerService] Refresh error: {ex.Message}");
             }
+        }
+
+        private static string GetProcessName(uint pid)
+        {
+            try
+            {
+                var proc = System.Diagnostics.Process.GetProcessById((int)pid);
+                return proc.ProcessName;
+            }
+            catch { return string.Empty; }
         }
 
         public async Task<bool> SetDefaultAudioDeviceAsync(string deviceId)
         {
-            await Task.Delay(150); // Simulate instant device switch in WinRT CoreAudio API
+            // Windows does not expose a public API to change default audio device.
+            // This requires PolicyConfig COM interop (undocumented).
+            // For now we simulate the change in UI; full implementation would use
+            // the AudioSwitcher library or direct PolicyConfigClient COM call.
+            await Task.Delay(100);
             foreach (var dev in Devices)
-            {
-                dev.IsDefault = (dev.Id == deviceId);
-            }
+                dev.IsDefault = dev.Id == deviceId;
             return true;
         }
 
         public void SetDeviceVolume(string deviceId, float newVolume)
         {
-            var device = Devices.FirstOrDefault(d => d.Id == deviceId);
-            if (device != null)
+            try
             {
-                device.Volume = Math.Clamp(newVolume, 0.0f, 1.0f);
+                var device = _enumerator.GetDevice(deviceId);
+                device.AudioEndpointVolume.MasterVolumeLevelScalar = Math.Clamp(newVolume, 0f, 1f);
+                var model = Devices.FirstOrDefault(d => d.Id == deviceId);
+                if (model != null) model.Volume = newVolume;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AudioMixerService] SetVolume error: {ex.Message}");
             }
         }
 
-        public void SetAppVolume(string appId, float newVolume)
+        public void Dispose()
         {
-            var app = AppSessions.FirstOrDefault(a => a.Id == appId);
-            if (app != null)
-            {
-                app.Volume = Math.Clamp(newVolume, 0.0f, 1.0f);
-            }
+            _enumerator?.Dispose();
         }
     }
 }

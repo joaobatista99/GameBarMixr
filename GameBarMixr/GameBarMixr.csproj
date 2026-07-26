@@ -14,13 +14,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Xbox Game Bar SDK -->
-    <PackageReference Include="Microsoft.Gaming.XboxGameBar" Version="1.6.1" />
+    <!-- Xbox Game Bar SDK (versão disponível no NuGet) -->
+    <PackageReference Include="Microsoft.Gaming.XboxGameBar" Version="5.1.200401003" />
     <!-- WinUI 3 / Windows App SDK -->
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240311000" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.3233" PrivateAssets="All" />
-    <!-- CoreAudio para controle de volume por app -->
-    <PackageReference Include="NAudio.CoreAudioApi" Version="2.2.1" />
+    <!-- CoreAudio para controle de volume por app (pacote correto: NAudio, não NAudio.CoreAudioApi) -->
+    <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
 
   <!-- Copiar Assets para o diretório de saída -->
