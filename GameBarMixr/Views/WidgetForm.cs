@@ -10,11 +10,20 @@ namespace GameBarMixr.Views
 {
     public class WidgetForm : Form
     {
-        // ── Win32 para bordas arredondadas e always-on-top ──────────────────
+        // ── Win32: bordas arredondadas + hotkey global ───────────────────────
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
         private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
         private const int DWMWCP_ROUND = 2;
+
+        [DllImport("user32.dll")]
+        private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+        [DllImport("user32.dll")]
+        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+        private const int HOTKEY_ID       = 9001;
+        private const uint MOD_SHIFT      = 0x0004;
+        private const uint MOD_WIN        = 0x0008;
+        private const uint VK_M           = 0x4D;   // Win+Shift+M
 
         // ── Cores do tema Xbox Dark ─────────────────────────────────────────
         private static readonly Color BgColor       = Color.FromArgb(18,  18,  18);
@@ -51,6 +60,41 @@ namespace GameBarMixr.Views
             ApplyRoundedCorners();
             RenderAudio();
             RenderBluetooth();
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            // Registra Win+Shift+M como atalho global para mostrar/esconder
+            RegisterHotKey(Handle, HOTKEY_ID, MOD_WIN | MOD_SHIFT, VK_M);
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            // Esconde ao invés de fechar (mantém no tray)
+            if (e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                Hide();
+                return;
+            }
+            UnregisterHotKey(Handle, HOTKEY_ID);
+            base.OnFormClosing(e);
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            const int WM_HOTKEY     = 0x0312;
+            const int WM_SHOWWINDOW = 0x0018;
+            if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == HOTKEY_ID)
+            {
+                if (Visible) Hide(); else { Show(); Activate(); BringToFront(); }
+            }
+            else if (m.Msg == WM_SHOWWINDOW)
+            {
+                Show(); Activate(); BringToFront();
+            }
+            base.WndProc(ref m);
         }
 
         private void InitializeComponent()
