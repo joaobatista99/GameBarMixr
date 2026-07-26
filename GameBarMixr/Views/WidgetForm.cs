@@ -10,7 +10,7 @@ namespace GameBarMixr.Views
 {
     public class WidgetForm : Form
     {
-        // ── Win32: bordas arredondadas + hotkey global ───────────────────────
+        // ── Win32 ────────────────────────────────────────────────────────────
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
         private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
@@ -20,323 +20,301 @@ namespace GameBarMixr.Views
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
         [DllImport("user32.dll")]
         private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
-        private const int HOTKEY_ID       = 9001;
-        private const uint MOD_SHIFT      = 0x0004;
-        private const uint MOD_WIN        = 0x0008;
-        private const uint VK_M           = 0x4D;   // Win+Shift+M
+        private const int  HOTKEY_ID  = 9001;
+        private const uint MOD_SHIFT  = 0x0004;
+        private const uint MOD_WIN    = 0x0008;
+        private const uint VK_M       = 0x4D;
 
-        // ── Cores do tema Xbox Dark ─────────────────────────────────────────
+        // ── Tema Xbox Dark ───────────────────────────────────────────────────
         private static readonly Color BgColor       = Color.FromArgb(18,  18,  18);
         private static readonly Color CardColor     = Color.FromArgb(30,  30,  30);
-        private static readonly Color CardHover     = Color.FromArgb(45,  45,  45);
         private static readonly Color AccentGreen   = Color.FromArgb(16, 124,  65);
         private static readonly Color TextPrimary   = Color.FromArgb(255, 255, 255);
         private static readonly Color TextSecondary = Color.FromArgb(140, 140, 140);
-        private static readonly Color BorderColor   = Color.FromArgb(45,  45,  45);
+        private static readonly Color BorderColor   = Color.FromArgb(50,  50,  50);
 
-        // ── Serviços ────────────────────────────────────────────────────────
-        private readonly AudioMixerService  _audioService;
-        private readonly BluetoothService   _btService;
+        // ── Serviços ─────────────────────────────────────────────────────────
+        private readonly AudioMixerService _audioService;
+        private readonly BluetoothService  _btService;
 
-        // ── Controles ───────────────────────────────────────────────────────
-        private Panel      _pnlHeader    = null!;
-        private Button     _btnAudio     = null!;
-        private Button     _btnBluetooth = null!;
-        private Button     _btnRefresh   = null!;
-        private Button     _btnClose     = null!;
-        private Panel      _pnlAudio     = null!;
-        private Panel      _pnlBluetooth = null!;
-        private FlowLayoutPanel _audioDevicesPanel  = null!;
-        private FlowLayoutPanel _appSessionsPanel   = null!;
-        private FlowLayoutPanel _btDevicesPanel     = null!;
-        private bool _audioTabActive = true;
+        // ── Panels ───────────────────────────────────────────────────────────
+        private Panel           _pnlAudio     = null!;
+        private Panel           _pnlBluetooth = null!;
+        private Button          _btnAudio     = null!;
+        private Button          _btnBluetooth = null!;
+        private FlowLayoutPanel _audioList    = null!;
+        private FlowLayoutPanel _appList      = null!;
+        private FlowLayoutPanel _btList       = null!;
+
+        // ── Drag ─────────────────────────────────────────────────────────────
+        private Point _dragOffset;
+        private bool  _dragging;
 
         public WidgetForm()
         {
             _audioService = new AudioMixerService();
             _btService    = new BluetoothService();
-
-            InitializeComponent();
-            ApplyRoundedCorners();
-            RenderAudio();
-            RenderBluetooth();
+            Build();
         }
 
-        protected override void OnHandleCreated(EventArgs e)
+        // ════════════════════════════════════════════════════════════════════
+        //  BUILD UI
+        // ════════════════════════════════════════════════════════════════════
+        private void Build()
         {
-            base.OnHandleCreated(e);
-            // Registra Win+Shift+M como atalho global para mostrar/esconder
-            RegisterHotKey(Handle, HOTKEY_ID, MOD_WIN | MOD_SHIFT, VK_M);
-        }
+            SuspendLayout();
 
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            // Esconde ao invés de fechar (mantém no tray)
-            if (e.CloseReason == CloseReason.UserClosing)
-            {
-                e.Cancel = true;
-                Hide();
-                return;
-            }
-            UnregisterHotKey(Handle, HOTKEY_ID);
-            base.OnFormClosing(e);
-        }
-
-        protected override void WndProc(ref Message m)
-        {
-            const int WM_HOTKEY     = 0x0312;
-            const int WM_SHOWWINDOW = 0x0018;
-            if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == HOTKEY_ID)
-            {
-                if (Visible) Hide(); else { Show(); Activate(); BringToFront(); }
-            }
-            else if (m.Msg == WM_SHOWWINDOW)
-            {
-                Show(); Activate(); BringToFront();
-            }
-            base.WndProc(ref m);
-        }
-
-        private void InitializeComponent()
-        {
             Text            = "GameBarMixr";
-            Size            = new Size(340, 470);
             FormBorderStyle = FormBorderStyle.None;
             BackColor       = BgColor;
             TopMost         = true;
             StartPosition   = FormStartPosition.Manual;
+            Size            = new Size(330, 480);
+            ShowInTaskbar   = false;
 
-            // Posicionar no canto superior direito
-            var screen = Screen.PrimaryScreen!.WorkingArea;
-            Location = new Point(screen.Right - Width - 16, screen.Top + 60);
+            var screen = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
+            Location = new Point(screen.Right - Width - 16, screen.Top + 48);
 
-            // ── Header ──────────────────────────────────────────────────────
-            _pnlHeader = new Panel
+            // ── Root: TableLayoutPanel (3 linhas: header / tabs / conteúdo) ─
+            var root = new TableLayoutPanel
             {
-                Dock      = DockStyle.Top,
-                Height    = 46,
-                BackColor = Color.FromArgb(14, 14, 14)
+                Dock        = DockStyle.Fill,
+                RowCount    = 3,
+                ColumnCount = 1,
+                BackColor   = BgColor,
+                Margin      = Padding.Empty,
+                Padding     = Padding.Empty
             };
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));  // header
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));  // tabs
+            root.RowStyles.Add(new RowStyle(SizeType.Percent,  100)); // content
 
-            // Label GameBarMixr
-            var lblTitle = new Label
+            root.Controls.Add(BuildHeader(), 0, 0);
+            root.Controls.Add(BuildTabs(),   0, 1);
+
+            // ── Conteúdo: dois painéis sobrepostos ───────────────────────────
+            var contentHost = new Panel { Dock = DockStyle.Fill, BackColor = BgColor };
+            _pnlAudio     = BuildAudioPanel();
+            _pnlBluetooth = BuildBluetoothPanel();
+            _pnlBluetooth.Visible = false;
+            contentHost.Controls.Add(_pnlBluetooth);
+            contentHost.Controls.Add(_pnlAudio);
+
+            root.Controls.Add(contentHost, 0, 2);
+            Controls.Add(root);
+
+            ResumeLayout(true);
+
+            RenderAudio();
+            RenderBluetooth();
+        }
+
+        // ── Header ───────────────────────────────────────────────────────────
+        private Panel BuildHeader()
+        {
+            var hdr = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(14, 14, 14) };
+
+            var title = new Label
             {
                 Text      = "🎧  GameBarMixr",
                 ForeColor = TextPrimary,
                 Font      = new Font("Segoe UI", 11f, FontStyle.Bold),
-                AutoSize  = false,
-                Size      = new Size(180, 46),
                 Location  = new Point(12, 0),
+                Size      = new Size(180, 44),
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
-            // Botão Fechar
-            _btnClose = MakeIconButton("✕", 32, 7, () => this.Hide());
+            var btnClose = IconBtn("✕", 8,  8, () => Hide());
+            var btnRef   = IconBtn("↻", 44, 8, Refresh);
 
-            // Botão Refresh
-            _btnRefresh = MakeIconButton("↻", 32 + 36, 7, OnRefresh);
+            hdr.Controls.AddRange(new Control[] { title, btnRef, btnClose });
+            hdr.MouseDown += HeaderDrag;
+            title.MouseDown += HeaderDrag;
+            return hdr;
+        }
 
-            _pnlHeader.Controls.AddRange(new Control[] { lblTitle, _btnRefresh, _btnClose });
-
-            // ── Segmented Pill ───────────────────────────────────────────────
-            var pnlTabs = new Panel
+        private Button IconBtn(string text, int rightOffset, int top, Action action)
+        {
+            var b = new Button
             {
-                Dock      = DockStyle.Top,
-                Height    = 42,
-                BackColor = BgColor,
-                Padding   = new Padding(10, 6, 10, 0)
+                Text      = text,
+                Size      = new Size(28, 28),
+                Location  = new Point(330 - rightOffset - 28, top),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.Transparent,
+                ForeColor = TextSecondary,
+                Font      = new Font("Segoe UI", 10f),
+                Cursor    = Cursors.Hand,
+                Anchor    = AnchorStyles.Top | AnchorStyles.Right,
+                FlatAppearance = { BorderSize = 0 }
+            };
+            b.Click += (s, e) => action();
+            return b;
+        }
+
+        // ── Tabs ─────────────────────────────────────────────────────────────
+        private Panel BuildTabs()
+        {
+            var pnl = new Panel { Dock = DockStyle.Fill, BackColor = BgColor, Padding = new Padding(10, 6, 10, 4) };
+
+            var pill = new Panel
+            {
+                Size      = new Size(308, 30),
+                Location  = new Point(1, 6),
+                BackColor = Color.FromArgb(28, 28, 28)
             };
 
-            var pillBg = new Panel
-            {
-                BackColor = Color.FromArgb(28, 28, 28),
-                Size      = new Size(296, 30),
-                Location  = new Point(10, 6)
-            };
-            pillBg.Paint += (s, e) =>
-            {
-                var path = RoundedRect(new Rectangle(0, 0, pillBg.Width - 1, pillBg.Height - 1), 15);
-                e.Graphics.FillPath(new SolidBrush(pillBg.BackColor), path);
-            };
-
-            _btnAudio = MakePillButton("Áudio", true);
+            _btnAudio = PillBtn("  Áudio  ", true);
             _btnAudio.Location = new Point(3, 3);
             _btnAudio.Click += (s, e) => SwitchTab(true);
 
-            _btnBluetooth = MakePillButton("Bluetooth", false);
-            _btnBluetooth.Location = new Point(3 + _btnAudio.Width + 2, 3);
+            _btnBluetooth = PillBtn("  Bluetooth  ", false);
+            _btnBluetooth.Location = new Point(_btnAudio.Width + 5, 3);
             _btnBluetooth.Click += (s, e) => SwitchTab(false);
 
-            pillBg.Controls.AddRange(new Control[] { _btnAudio, _btnBluetooth });
-            pnlTabs.Controls.Add(pillBg);
-
-            // ── Painel ÁUDIO ─────────────────────────────────────────────────
-            _pnlAudio = new Panel
-            {
-                Dock      = DockStyle.Fill,
-                BackColor = BgColor,
-                AutoScroll = true,
-                Padding   = new Padding(10, 4, 10, 10)
-            };
-
-            var lblDevices = MakeSectionLabel("SAÍDA DE ÁUDIO");
-            lblDevices.Location = new Point(0, 4);
-
-            _audioDevicesPanel = new FlowLayoutPanel
-            {
-                AutoSize   = true,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents = false,
-                Location   = new Point(0, 24),
-                Width      = 310
-            };
-
-            var lblApps = MakeSectionLabel("APLICATIVOS");
-            lblApps.Location = new Point(0, 0);
-
-            _appSessionsPanel = new FlowLayoutPanel
-            {
-                AutoSize      = true,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents  = false,
-                Width         = 310
-            };
-
-            // Wrapper para Apps com margin top
-            var pnlAppsWrapper = new Panel { AutoSize = true, Width = 310 };
-            pnlAppsWrapper.Controls.Add(lblApps);
-            pnlAppsWrapper.Controls.Add(_appSessionsPanel);
-            _appSessionsPanel.Location = new Point(0, 24);
-
-            _pnlAudio.Controls.Add(lblDevices);
-            _pnlAudio.Controls.Add(_audioDevicesPanel);
-            _pnlAudio.Controls.Add(pnlAppsWrapper);
-
-            // ── Painel BLUETOOTH ─────────────────────────────────────────────
-            _pnlBluetooth = new Panel
-            {
-                Dock      = DockStyle.Fill,
-                BackColor = BgColor,
-                AutoScroll = true,
-                Padding   = new Padding(10, 4, 10, 10),
-                Visible   = false
-            };
-
-            var lblBt = MakeSectionLabel("DISPOSITIVOS EMPARELHADOS");
-            lblBt.Location = new Point(0, 4);
-
-            _btDevicesPanel = new FlowLayoutPanel
-            {
-                AutoSize      = true,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents  = false,
-                Location      = new Point(0, 24),
-                Width         = 310
-            };
-
-            _pnlBluetooth.Controls.Add(lblBt);
-            _pnlBluetooth.Controls.Add(_btDevicesPanel);
-
-            // ── Drag para mover a janela ─────────────────────────────────────
-            _pnlHeader.MouseDown += StartDrag;
-            lblTitle.MouseDown   += StartDrag;
-
-            // ── Layout ───────────────────────────────────────────────────────
-            Controls.Add(_pnlAudio);
-            Controls.Add(_pnlBluetooth);
-            Controls.Add(pnlTabs);
-            Controls.Add(_pnlHeader);
-
-            // BringToFront garante a ordem de dock
-            _pnlHeader.BringToFront();
-            pnlTabs.BringToFront();
+            pill.Controls.AddRange(new Control[] { _btnAudio, _btnBluetooth });
+            pnl.Controls.Add(pill);
+            return pnl;
         }
 
-        // ── Render ──────────────────────────────────────────────────────────
+        private static Button PillBtn(string text, bool active) => new Button
+        {
+            Text      = text,
+            AutoSize  = true,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = active ? AccentGreen : Color.Transparent,
+            ForeColor = active ? TextPrimary : TextSecondary,
+            Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
+            Cursor    = Cursors.Hand,
+            MinimumSize = new Size(80, 24),
+            FlatAppearance = { BorderSize = 0 }
+        };
+
+        // ── Painel Áudio ─────────────────────────────────────────────────────
+        private Panel BuildAudioPanel()
+        {
+            var scroll = new Panel { Dock = DockStyle.Fill, BackColor = BgColor, AutoScroll = true };
+
+            var inner = new FlowLayoutPanel
+            {
+                Dock          = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents  = false,
+                AutoSize      = false,
+                BackColor     = BgColor,
+                Padding       = new Padding(10, 6, 10, 10)
+            };
+
+            inner.Controls.Add(SectionLabel("SAÍDA DE ÁUDIO"));
+            _audioList = NewList();
+            inner.Controls.Add(_audioList);
+
+            inner.Controls.Add(SectionLabel("APLICATIVOS"));
+            _appList = NewList();
+            inner.Controls.Add(_appList);
+
+            scroll.Controls.Add(inner);
+            return scroll;
+        }
+
+        // ── Painel Bluetooth ─────────────────────────────────────────────────
+        private Panel BuildBluetoothPanel()
+        {
+            var scroll = new Panel { Dock = DockStyle.Fill, BackColor = BgColor, AutoScroll = true };
+
+            var inner = new FlowLayoutPanel
+            {
+                Dock          = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents  = false,
+                AutoSize      = false,
+                BackColor     = BgColor,
+                Padding       = new Padding(10, 6, 10, 10)
+            };
+
+            inner.Controls.Add(SectionLabel("DISPOSITIVOS EMPARELHADOS"));
+            _btList = NewList();
+            inner.Controls.Add(_btList);
+
+            scroll.Controls.Add(inner);
+            return scroll;
+        }
+
+        private static FlowLayoutPanel NewList() => new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents  = false,
+            AutoSize      = true,
+            Width         = 306,
+            BackColor     = Color.Transparent
+        };
+
+        // ════════════════════════════════════════════════════════════════════
+        //  RENDER
+        // ════════════════════════════════════════════════════════════════════
         private void RenderAudio()
         {
-            _audioDevicesPanel.Controls.Clear();
-            _appSessionsPanel.Controls.Clear();
+            _audioList.Controls.Clear();
+            _appList.Controls.Clear();
 
-            foreach (var dev in _audioService.Devices)
-                _audioDevicesPanel.Controls.Add(MakeDeviceCard(dev));
-
-            foreach (var app in _audioService.AppSessions)
-                _appSessionsPanel.Controls.Add(MakeAppCard(app));
+            foreach (var d in _audioService.Devices)    _audioList.Controls.Add(DeviceCard(d));
+            foreach (var a in _audioService.AppSessions) _appList.Controls.Add(AppCard(a));
         }
 
         private void RenderBluetooth()
         {
-            _btDevicesPanel.Controls.Clear();
-            foreach (var bt in _btService.PairedDevices)
-                _btDevicesPanel.Controls.Add(MakeBtCard(bt));
+            _btList.Controls.Clear();
+            foreach (var b in _btService.PairedDevices) _btList.Controls.Add(BtCard(b));
         }
 
-        // ── Cards ────────────────────────────────────────────────────────────
-        private Panel MakeDeviceCard(AudioDeviceModel dev)
+        // ── Cards ─────────────────────────────────────────────────────────────
+        private Panel DeviceCard(AudioDeviceModel dev)
         {
-            var card = new Panel
-            {
-                Width     = 308,
-                Height    = 42,
-                BackColor = dev.IsDefault ? Color.FromArgb(20, 60, 35) : CardColor,
-                Cursor    = Cursors.Hand,
-                Margin    = new Padding(0, 0, 0, 5)
-            };
-            DrawRoundedBorder(card, dev.IsDefault ? AccentGreen : BorderColor);
+            var bg = dev.IsDefault ? Color.FromArgb(20, 60, 35) : CardColor;
+            var card = Card(308, 44, bg);
 
             var dot = new Panel
             {
-                Size      = new Size(7, 7),
-                BackColor = dev.IsDefault ? AccentGreen : Color.FromArgb(60, 60, 60),
-                Location  = new Point(10, 17)
+                Size      = new Size(8, 8),
+                Location  = new Point(12, 18),
+                BackColor = dev.IsDefault ? AccentGreen : Color.FromArgb(55, 55, 55)
             };
-            DrawRoundedBorder(dot, dot.BackColor);
 
             var lbl = new Label
             {
                 Text      = dev.Name,
                 ForeColor = dev.IsDefault ? TextPrimary : TextSecondary,
                 Font      = new Font("Segoe UI", 9.5f, dev.IsDefault ? FontStyle.Bold : FontStyle.Regular),
-                AutoSize  = false,
-                Size      = new Size(260, 42),
-                Location  = new Point(26, 0),
+                Location  = new Point(28, 0),
+                Size      = new Size(264, 44),
                 TextAlign = ContentAlignment.MiddleLeft
             };
-            lbl.TextAlign = ContentAlignment.MiddleLeft;
 
             card.Controls.AddRange(new Control[] { dot, lbl });
 
-            // Handler extraído para poder ser reutilizado no label
-            async void OnCardClick(object? s, EventArgs e)
+            async void Click(object? s, EventArgs e)
             {
                 await _audioService.SetDefaultAudioDeviceAsync(dev.Id);
                 RenderAudio();
             }
-            card.Click += OnCardClick;
-            lbl.Click  += OnCardClick;
+            card.Click += Click;
+            lbl.Click  += Click;
+            card.Cursor = Cursors.Hand;
+            lbl.Cursor  = Cursors.Hand;
             return card;
         }
 
-        private Panel MakeAppCard(AppAudioSessionModel app)
+        private Panel AppCard(AppAudioSessionModel app)
         {
-            var card = new Panel
-            {
-                Width     = 308,
-                Height    = 52,
-                BackColor = Color.FromArgb(24, 24, 24),
-                Margin    = new Padding(0, 0, 0, 5)
-            };
-            DrawRoundedBorder(card, BorderColor);
+            var card = Card(308, 56, Color.FromArgb(24, 24, 24));
 
-            var lbl = new Label
+            var lblName = new Label
             {
                 Text      = app.AppName,
                 ForeColor = TextPrimary,
-                Font      = new Font("Segoe UI", 9f, FontStyle.Regular),
-                AutoSize  = false,
-                Size      = new Size(220, 22),
+                Font      = new Font("Segoe UI", 9f),
                 Location  = new Point(10, 4),
+                Size      = new Size(210, 22),
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
@@ -345,9 +323,8 @@ namespace GameBarMixr.Views
                 Text      = $"{app.VolumePercent}%",
                 ForeColor = TextSecondary,
                 Font      = new Font("Segoe UI", 8.5f),
-                AutoSize  = false,
-                Size      = new Size(60, 22),
                 Location  = new Point(240, 4),
+                Size      = new Size(58, 22),
                 TextAlign = ContentAlignment.MiddleRight
             };
 
@@ -357,37 +334,29 @@ namespace GameBarMixr.Views
                 Maximum   = 100,
                 Value     = app.VolumePercent,
                 TickStyle = TickStyle.None,
-                Size      = new Size(288, 24),
-                Location  = new Point(6, 26),
+                Location  = new Point(6, 28),
+                Size      = new Size(292, 24),
                 BackColor = Color.FromArgb(24, 24, 24)
             };
             slider.ValueChanged += (s, e) =>
             {
-                app.Volume = slider.Value / 100f;
                 lblPct.Text = $"{slider.Value}%";
-                _audioService.SetAppVolume(app.Id, app.Volume);
+                _audioService.SetAppVolume(app.Id, slider.Value / 100f);
             };
 
-            card.Controls.AddRange(new Control[] { lbl, lblPct, slider });
+            card.Controls.AddRange(new Control[] { lblName, lblPct, slider });
             return card;
         }
 
-        private Panel MakeBtCard(BluetoothDeviceModel bt)
+        private Panel BtCard(BluetoothDeviceModel bt)
         {
-            var card = new Panel
-            {
-                Width     = 308,
-                Height    = 52,
-                BackColor = CardColor,
-                Margin    = new Padding(0, 0, 0, 6)
-            };
-            DrawRoundedBorder(card, BorderColor);
+            var card = Card(308, 54, CardColor);
 
             var dot = new Panel
             {
                 Size      = new Size(8, 8),
-                BackColor = bt.IsConnected ? Color.FromArgb(78, 202, 132) : Color.FromArgb(60, 60, 60),
-                Location  = new Point(10, 22)
+                Location  = new Point(12, 23),
+                BackColor = bt.IsConnected ? Color.FromArgb(78, 202, 132) : Color.FromArgb(55, 55, 55)
             };
 
             var lblName = new Label
@@ -395,157 +364,144 @@ namespace GameBarMixr.Views
                 Text      = bt.Name,
                 ForeColor = TextPrimary,
                 Font      = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-                AutoSize  = false,
-                Size      = new Size(190, 20),
-                Location  = new Point(26, 6),
+                Location  = new Point(28, 6),
+                Size      = new Size(180, 20),
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
-            var status = bt.IsConnected ? "Conectado" : "Desconectado";
-            var battery = bt.HasBatteryInfo ? $" · 🔋{bt.BatteryLevel}%" : "";
+            var batt  = bt.HasBatteryInfo ? $" · 🔋{bt.BatteryLevel}%" : "";
             var lblSub = new Label
             {
-                Text      = status + battery,
+                Text      = (bt.IsConnected ? "Conectado" : "Desconectado") + batt,
                 ForeColor = bt.IsConnected ? Color.FromArgb(78, 202, 132) : TextSecondary,
                 Font      = new Font("Segoe UI", 8f),
-                AutoSize  = false,
-                Size      = new Size(190, 18),
-                Location  = new Point(26, 28),
+                Location  = new Point(28, 28),
+                Size      = new Size(180, 18),
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
-            var btn = new Button
+            var actionBtn = new Button
             {
                 Text      = bt.IsConnected ? "Desconectar" : "Conectar",
                 ForeColor = bt.IsConnected ? Color.FromArgb(255, 100, 90) : TextPrimary,
                 BackColor = Color.FromArgb(38, 38, 38),
                 FlatStyle = FlatStyle.Flat,
                 Font      = new Font("Segoe UI", 8.5f, FontStyle.Bold),
-                Size      = new Size(88, 26),
-                Location  = new Point(212, 13),
-                Cursor    = Cursors.Hand
+                Size      = new Size(90, 28),
+                Location  = new Point(210, 13),
+                Cursor    = Cursors.Hand,
+                FlatAppearance = { BorderColor = BorderColor, BorderSize = 1 }
             };
-            btn.FlatAppearance.BorderColor = Color.FromArgb(55, 55, 55);
-            btn.FlatAppearance.BorderSize  = 1;
-
-            btn.Click += async (s, e) =>
+            actionBtn.Click += async (s, e) =>
             {
-                btn.Enabled = false;
-                btn.Text    = "Aguarde...";
+                actionBtn.Enabled = false;
+                actionBtn.Text    = "Aguarde...";
                 await _btService.ToggleConnectionAsync(bt);
                 if (bt.IsConnected) _audioService.RefreshAudioDevices();
                 RenderAudio();
                 RenderBluetooth();
-                btn.Enabled = true;
             };
 
-            card.Controls.AddRange(new Control[] { dot, lblName, lblSub, btn });
+            card.Controls.AddRange(new Control[] { dot, lblName, lblSub, actionBtn });
             return card;
         }
 
-        // ── Helpers visuais ──────────────────────────────────────────────────
-        private static Label MakeSectionLabel(string text) => new Label
+        // ── Helpers ───────────────────────────────────────────────────────────
+        private static Panel Card(int w, int h, Color bg)
         {
-            Text      = text,
-            ForeColor = Color.FromArgb(90, 90, 90),
-            Font      = new Font("Segoe UI", 7.5f, FontStyle.Bold),
-            AutoSize  = false,
-            Size      = new Size(300, 18),
-            TextAlign = ContentAlignment.MiddleLeft
-        };
-
-        private static Button MakePillButton(string text, bool active) => new Button
-        {
-            Text      = text,
-            Size      = new Size(142, 24),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = active ? AccentGreen : Color.Transparent,
-            ForeColor = active ? TextPrimary : TextSecondary,
-            Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
-            Cursor    = Cursors.Hand,
-            FlatAppearance = { BorderSize = 0 }
-        };
-
-        private Button MakeIconButton(string icon, int rightOffset, int top, Action onClick)
-        {
-            var btn = new Button
+            var p = new Panel
             {
-                Text      = icon,
-                Size      = new Size(28, 28),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.Transparent,
-                ForeColor = TextSecondary,
-                Font      = new Font("Segoe UI", 10f),
-                Cursor    = Cursors.Hand,
-                Anchor    = AnchorStyles.Top | AnchorStyles.Right,
-                FlatAppearance = { BorderSize = 0 }
+                Width     = w,
+                Height    = h,
+                BackColor = bg,
+                Margin    = new Padding(0, 0, 0, 5)
             };
-            btn.Location = new Point(Width - rightOffset - btn.Width - 4, top);
-            btn.Click += (s, e) => onClick();
-            return btn;
-        }
-
-        private static void DrawRoundedBorder(Control ctrl, Color borderColor)
-        {
-            ctrl.Paint += (s, e) =>
+            p.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using var pen = new Pen(borderColor, 1);
-                var path = RoundedRect(new Rectangle(0, 0, ctrl.Width - 1, ctrl.Height - 1), 8);
+                using var pen = new Pen(BorderColor, 1);
+                var path = Rounded(new Rectangle(0, 0, p.Width - 1, p.Height - 1), 8);
                 e.Graphics.DrawPath(pen, path);
             };
+            return p;
         }
 
-        private static GraphicsPath RoundedRect(Rectangle bounds, int radius)
+        private static Label SectionLabel(string text) => new Label
         {
-            var path = new GraphicsPath();
-            path.AddArc(bounds.X, bounds.Y, radius * 2, radius * 2, 180, 90);
-            path.AddArc(bounds.Right - radius * 2, bounds.Y, radius * 2, radius * 2, 270, 90);
-            path.AddArc(bounds.Right - radius * 2, bounds.Bottom - radius * 2, radius * 2, radius * 2, 0, 90);
-            path.AddArc(bounds.X, bounds.Bottom - radius * 2, radius * 2, radius * 2, 90, 90);
-            path.CloseFigure();
-            return path;
+            Text      = text,
+            ForeColor = Color.FromArgb(85, 85, 85),
+            Font      = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+            Size      = new Size(306, 20),
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin    = new Padding(0, 4, 0, 2)
+        };
+
+        private static GraphicsPath Rounded(Rectangle b, int r)
+        {
+            var p = new GraphicsPath();
+            p.AddArc(b.X,          b.Y,           r*2, r*2, 180, 90);
+            p.AddArc(b.Right-r*2,  b.Y,           r*2, r*2, 270, 90);
+            p.AddArc(b.Right-r*2,  b.Bottom-r*2,  r*2, r*2,   0, 90);
+            p.AddArc(b.X,          b.Bottom-r*2,  r*2, r*2,  90, 90);
+            p.CloseFigure();
+            return p;
         }
 
-        private void ApplyRoundedCorners()
+        // ── Tab switch ────────────────────────────────────────────────────────
+        private void SwitchTab(bool audio)
         {
-            int pref = DWMWCP_ROUND;
-            DwmSetWindowAttribute(Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int));
+            _pnlAudio.Visible     = audio;
+            _pnlBluetooth.Visible = !audio;
+            _btnAudio.BackColor     = audio  ? AccentGreen       : Color.Transparent;
+            _btnAudio.ForeColor     = audio  ? TextPrimary       : TextSecondary;
+            _btnBluetooth.BackColor = !audio ? AccentGreen       : Color.Transparent;
+            _btnBluetooth.ForeColor = !audio ? TextPrimary       : TextSecondary;
         }
 
-        // ── Tab switch ───────────────────────────────────────────────────────
-        private void SwitchTab(bool audioTab)
-        {
-            _audioTabActive = audioTab;
-            _pnlAudio.Visible     = audioTab;
-            _pnlBluetooth.Visible = !audioTab;
-            _btnAudio.BackColor     = audioTab  ? AccentGreen : Color.Transparent;
-            _btnAudio.ForeColor     = audioTab  ? TextPrimary : TextSecondary;
-            _btnBluetooth.BackColor = !audioTab ? AccentGreen : Color.Transparent;
-            _btnBluetooth.ForeColor = !audioTab ? TextPrimary : TextSecondary;
-        }
-
-        // ── Drag ─────────────────────────────────────────────────────────────
-        private Point _dragStart;
-        private void StartDrag(object? s, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Left)
-                _dragStart = e.Location;
-        }
-        protected override void OnMouseMove(MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Left)
-                Location = new Point(
-                    Location.X + e.X - _dragStart.X,
-                    Location.Y + e.Y - _dragStart.Y);
-        }
-
-        // ── Refresh ──────────────────────────────────────────────────────────
-        private void OnRefresh()
+        // ── Refresh ───────────────────────────────────────────────────────────
+        private new void Refresh()
         {
             _audioService.RefreshAudioDevices();
             RenderAudio();
             RenderBluetooth();
+        }
+
+        // ── Drag ──────────────────────────────────────────────────────────────
+        private void HeaderDrag(object? s, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left) { _dragging = true; _dragOffset = e.Location; }
+        }
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            if (_dragging && e.Button == MouseButtons.Left)
+                Location = new Point(Location.X + e.X - _dragOffset.X, Location.Y + e.Y - _dragOffset.Y);
+        }
+        protected override void OnMouseUp(MouseEventArgs e) { _dragging = false; }
+
+        // ── Win32 hooks ───────────────────────────────────────────────────────
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            int r = DWMWCP_ROUND;
+            DwmSetWindowAttribute(Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref r, sizeof(int));
+            RegisterHotKey(Handle, HOTKEY_ID, MOD_WIN | MOD_SHIFT, VK_M);
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; Hide(); return; }
+            UnregisterHotKey(Handle, HOTKEY_ID);
+            base.OnFormClosing(e);
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            const int WM_HOTKEY = 0x0312;
+            if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == HOTKEY_ID)
+            {
+                if (Visible) Hide(); else { Show(); Activate(); BringToFront(); }
+            }
+            base.WndProc(ref m);
         }
     }
 }
